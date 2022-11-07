@@ -1,0 +1,77 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+generator erd {
+  provider = "prisma-erd-generator"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Poll {
+  id        String   @id @default(cuid())
+  title     String
+  code      String   @unique
+  createdAt DateTime @default(now())
+  ownerId   String?
+
+  participants Participant[]
+  owner        User?         @relation(fields: [ownerId], references: [id])
+}
+
+// Participant is a join table between User and Poll / tabela pivô entre User e Poll
+model Participant {
+  id     String @id @default(cuid())
+  userId String
+  pollId String
+
+  guesses Guess[]
+  user    User    @relation(fields: [userId], references: [id])
+  poll    Poll    @relation(fields: [pollId], references: [id])
+
+  // This is a unique constraint that makes sure that a user can only participate in a poll once
+  @@unique([userId, pollId])
+}
+
+model User {
+  id        String   @id @default(cuid())
+  name      String
+  email     String   @unique
+  googleId  String?  @unique
+  avatarUrl String?
+  createdAt DateTime @default(now())
+
+  // bolões que o usuário participa
+  participatingAt Participant[]
+  // bolões que o usuário é dono
+  ownPolls        Poll[]
+}
+
+model Game {
+  id                    String   @id @default(cuid())
+  date                  DateTime
+  firstTeamCountryCode  String
+  secondTeamCountryCode String
+
+  // nao cria uma tabela no banco de dados
+  guesses Guess[]
+}
+
+model Guess {
+  id String @id @default(cuid())
+
+  firstTeamPoints  Int
+  secondTeamPoints Int
+  createdAt        DateTime @default(now())
+  // id do jogo que vai ficar salvo dentro da tabela de palpite
+  gameId           String
+  participantId    String
+
+  participant Participant @relation(fields: [participantId], references: [id])
+  game        Game        @relation(fields: [gameId], references: [id])
+
+  @@unique([participantId, gameId])
+}
